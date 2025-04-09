@@ -1,23 +1,16 @@
 import requests
 from bs4 import BeautifulSoup
 import csv
+import os
 
 URL = "https://elephantflea.pw/2024/07/sega-saturn-game-ids"
 CSV_FILE = "games.csv"
 
-# Fetch existing IDs to avoid duplicates
-existing_ids = set()
-try:
-    with open(CSV_FILE, 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        next(reader)  # Skip header
-        for row in reader:
-            if row:
-                existing_ids.add(row[0])
-except FileNotFoundError:
+# Initialize CSV file with header if it doesn't exist
+if not os.path.exists(CSV_FILE):
     with open(CSV_FILE, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(["ID", "Title"])
+        writer.writerow(["ID", "Title", "Region", "System"])
 
 # Scrape the website
 response = requests.get(URL)
@@ -25,18 +18,29 @@ soup = BeautifulSoup(response.content, "html.parser")
 table = soup.find("table")
 rows = table.find_all("tr")[1:]  # Skip header
 
-# Append new entries
+# Append all entries, including duplicate IDs
 with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
     for row in rows:
         cols = row.find_all("td")
         if len(cols) >= 2:
-            game_id = cols[0].text.strip()
-            title = cols[1].text.strip()
-            if game_id not in existing_ids:
-                writer.writerow([game_id, title])
-                print(f"Added: {title} ({game_id})")
+            title = cols[0].text.strip()    # e.g., "Tokimeki Memorial Drama Series Vol. 1 - Nijiiro no Seishun (Japan) (Demo)"
+            full_id = cols[1].text.strip()  # e.g., "6106663   V1.000"
+            game_id = full_id.split()[0]    # Take first part, e.g., "6106663"
+            system = "SATURN"
+            
+            # Determine region from title
+            if "(Japan)" in title:
+                region = "NTSC-J"
+            elif "(USA)" in title:
+                region = "NTSC-U"
+            elif "(Europe)" in title:
+                region = "PAL"
             else:
-                print(f"Skipped duplicate: {game_id}")
+                region = "Unknown"
+            
+            # Write every entry, even if ID duplicates
+            writer.writerow([game_id, title, region, system])
+            print(f"Added: {game_id}, {title}, {region}, {system}")
 
 print("Scraping complete")
