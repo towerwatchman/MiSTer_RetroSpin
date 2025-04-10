@@ -18,7 +18,7 @@ SATURN_GAME_PATHS = [
 ]
 CSV_PATH = "/media/fat/retrospin/games.csv"
 TMP_MGL_PATH = "/tmp/game.mgl"
-SAVE_SCRIPT = "/media/fat/retrospin/save_disc.sh"  # Updated path
+SAVE_SCRIPT = "/media/fat/retrospin/save_disc.sh"
 RIPDISC_PATH = "/media/fat/retrospin/cdrdao"
 
 def find_core(system):
@@ -56,7 +56,15 @@ def load_game_titles():
                     system = row[3].strip() if len(row) > 3 else "Unknown"
                     key = (game_id, system)
                     game_titles[key] = title
+                    # Debug: Log specific ID if present
+                    if game_id == "SLUS-00515":
+                        print(f"Loaded PSX entry: {key} -> {title}")
             print(f"Successfully loaded {len(game_titles)} game titles from {CSV_PATH}")
+            # Debug: Check if SLUS-00515 is in the loaded titles
+            if ('SLUS-00515', 'PSX') in game_titles:
+                print(f"Confirmed: SLUS-00515 mapped to {game_titles[('SLUS-00515', 'PSX')]}")
+            else:
+                print("Warning: SLUS-00515 not found in loaded titles with system 'PSX'")
     except Exception as e:
         print(f"Error loading game titles from CSV: {e}")
     return game_titles
