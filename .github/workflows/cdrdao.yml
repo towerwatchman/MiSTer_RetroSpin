@@ -31,16 +31,21 @@ jobs:
             --magic "\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00" \
             --mask "\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff"
 
-      - name: Download and extract ARM toolchain
+      - name: Download and setup ARM toolchain
         run: |
           wget -q -c https://developer.arm.com/-/media/Files/downloads/gnu-a/${GCC_VERSION}/binrel/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz
           sudo mkdir -p /opt
           sudo tar xf gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz -C /opt
           rm gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz
-          echo "export PATH=/opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
+          # Set PATH directly for this step and verify
+          export PATH=/opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/bin:$PATH
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          ls -la /opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/bin
+          which arm-none-linux-gnueabihf-gcc || { echo "ARM GCC not found in this step"; exit 1; }
 
       - name: Verify toolchain
         run: |
+          echo "Current PATH: $PATH"
           which arm-none-linux-gnueabihf-gcc || { echo "ARM GCC not found"; exit 1; }
           which arm-none-linux-gnueabihf-g++ || { echo "ARM G++ not found"; exit 1; }
           which arm-none-linux-gnueabihf-objdump || { echo "ARM objdump not found"; exit 1; }
