@@ -9,57 +9,49 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GCC_VERSION: 10.2-2020.11
+      CDRDAO_VERSION: 1.2.4
     steps:
-      - name: Checkout cdrdao repository
-        run: |
-          git clone https://github.com/cdrdao/cdrdao.git
-          cd cdrdao
-
-      - name: Debug directory contents
-        run: |
-          echo "Current directory: $(pwd)"
-          ls -la
-          cd cdrdao
-          ls -la
-
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential autoconf automake libtool libao-dev wget \
-            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross \
-            libgconf2-dev gettext
+          sudo apt-get install -y build-essential autoconf automake libtool libao-dev wget
 
       - name: Download and extract ARM toolchain
         run: |
-          wget -c https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz
+          wget -q -c https://developer.arm.com/-/media/Files/downloads/gnu-a/${GCC_VERSION}/binrel/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz
           sudo mkdir -p /opt
-          sudo tar xf gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz -C /opt
-          echo "export PATH=/opt/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
+          sudo tar xf gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz -C /opt
+          rm gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz
+          echo "export PATH=/opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Setup ARM library symlinks
+        run: |
+          sudo ln -sf /opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/arm-none-linux-gnueabihf/libc/lib/ld-linux-armhf.so.3 /lib/ld-linux-armhf.so.3
+          sudo ln -sf /opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/arm-none-linux-gnueabihf/libc/lib/libc.so.6 /lib/libc.so.6
+          sudo ln -sf /opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/arm-none-linux-gnueabihf/libc/lib/libpthread.so.0 /lib/libpthread.so.0
+
+      - name: Download and extract cdrdao
+        run: |
+          wget -q https://github.com/cdrdao/cdrdao/releases/download/rel-${CDRDAO_VERSION}/cdrdao-${CDRDAO_VERSION}.tar.bz2
+          tar xf cdrdao-${CDRDAO_VERSION}.tar.bz2
+          rm cdrdao-${CDRDAO_VERSION}.tar.bz2
 
       - name: Configure and build for ARM (MiSTer)
         run: |
-          cd cdrdao
-          chmod +x ./autogen.sh
-          ./autogen.sh
-          ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ --prefix=/usr
-          make
-
-      - name: Upload config.log if configure fails
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: config-log
-          path: cdrdao/config.log
+          cd cdrdao-${CDRDAO_VERSION}
+          ./configure --host=arm-none-linux-gnueabihf
+          make all
 
       - name: Verify build
         run: |
-          cd cdrdao
-          file cdrdao
-          arm-none-linux-gnueabihf-objdump -d cdrdao | head -n 20
+          cd cdrdao-${CDRDAO_VERSION}
+          file dao/cdrdao
+          arm-none-linux-gnueabihf-objdump -d dao/cdrdao | head -n 20
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: cdrdao-mister
-          path: cdrdao/cdrdao
+          path: cdrdao-${CDRDAO_VERSION}/dao/cdrdao
