@@ -12,6 +12,7 @@ BASE_DIR="$USB_SATURN_PATH"
 if [ "$SYSTEM" == "PSX" ]; then
     BASE_DIR="$USB_PSX_PATH"
 fi
+RIPDISC_PATH="/media/fat/retrospin/cdrdao"
 
 # Ensure directory exists
 mkdir -p "$BASE_DIR"
@@ -23,21 +24,22 @@ RESPONSE=$?
 if [ $RESPONSE -eq 0 ]; then  # Yes
     BIN_FILE="$BASE_DIR/$TITLE.bin"
     CUE_FILE="$BASE_DIR/$TITLE.cue"
-    echo "Saving disc to $BIN_FILE..."
+    TOC_FILE="$BASE_DIR/$TITLE.toc"
+    echo "Saving disc to: $BIN_FILE..."
 
     # Try to get actual disc size, fall back to 700MB if it fails
     DISC_SIZE=$(blockdev --getsize64 "$DRIVE_PATH" 2>/dev/null || echo $((700 * 1024 * 1024)))
     echo "Disc size detected: $DISC_SIZE bytes"
 
-    # Start dd in background with larger block size
-    dd if="$DRIVE_PATH" of="$BIN_FILE" bs=64k &
+    # Start cdrdao in background, redirecting output to /dev/null
+    ${RIPDISC_PATH}/cdrdao read-cd --read-raw --datafile "$BIN_FILE" --device "$DRIVE_PATH" --driver generic-mmc-raw "$TOC_FILE" > /dev/null 2>&1 &
 
-    # Get dd process ID
-    DD_PID=$!
+    # Get cdrdao process ID
+    CDRDAO_PID=$!
 
     # Progress gauge
     (
-        while kill -0 $DD_PID 2>/dev/null; do
+        while kill -0 $CDRDAO_PID 2>/dev/null; do
             if [ -f "$BIN_FILE" ]; then
                 CURRENT_SIZE=$(stat -c %s "$BIN_FILE" 2>/dev/null || echo 0)
                 PERCENT=$((CURRENT_SIZE * 100 / DISC_SIZE))
@@ -47,22 +49,30 @@ if [ $RESPONSE -eq 0 ]; then  # Yes
                 echo "Saving $TITLE... $PERCENT% complete"
                 echo "XXX"
             fi
-            sleep 10  # Increased to 10 seconds to reduce overhead
+            sleep 10  # Update every 10 seconds
         done
     ) | dialog --gauge "Saving $TITLE to USB..." 10 50 0
 
-    # Wait for dd to finish
-    wait $DD_PID
-    echo "Save complete"
+    # Wait for cdrdao to finish and check status
+    wait $CDRDAO_PID
+    CDRDAO_STATUS=$?
+    if [ $CDRDAO_STATUS -eq 0 ]; then
+        echo "Save to USB complete"
 
-    # Create .cue file
-    echo "FILE \"$TITLE.bin\" BINARY" > "$CUE_FILE"
-    echo "  TRACK 01 MODE2/2352" >> "$CUE_FILE"
-    echo "    INDEX 01 00:00:00" >> "$CUE_FILE"
-    echo "Saved .bin and .cue files: $BIN_FILE, $CUE_FILE"
+        # Convert .toc to .cue
+        ${RIPDISC_PATH}/toc2cue "$TOC_FILE" "$CUE_FILE" > /dev/null 2>&1
+        echo "Converted .toc to .cue: $CUE_FILE"
+
+        # Clean up .toc file
+        rm -f "$TOC_FILE"
+        FINAL_MESSAGE="Disc saved successfully. Please close this dialog to restart the launcher and load $TITLE."
+    else
+        echo "Error occurred during disc save. Check $BIN_FILE and $TOC_FILE for partial data."
+        FINAL_MESSAGE="Disc save failed. Partial data saved at $BIN_FILE. Close to restart launcher."
+    fi
     
     # Prompt user to close and restart launcher
-    dialog --msgbox "Disc saved successfully. Please close this dialog to restart the launcher and load $TITLE." 10 50
+    dialog --msgbox "$FINAL_MESSAGE" 10 50
     /media/fat/Scripts/launch_psx_disc.sh
 else
     echo "User declined to save disc image"

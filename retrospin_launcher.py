@@ -16,9 +16,10 @@ SATURN_GAME_PATHS = [
     "/media/fat/games/Saturn/",
     "/media/usb0/games/Saturn/"
 ]
-CSV_PATH = "/media/fat/dla/games.csv"
+CSV_PATH = "/media/fat/retrospin/games.csv"
 TMP_MGL_PATH = "/tmp/game.mgl"
-SAVE_SCRIPT = "/media/fat/Scripts/save_disc.sh"
+SAVE_SCRIPT = "/media/fat/retrospin/save_disc.sh"  # Updated path
+RIPDISC_PATH = "/media/fat/retrospin/cdrdao"
 
 def find_core(system):
     """Find the latest core .rbf file for the given system in /media/fat/_Console/."""
@@ -134,19 +135,34 @@ def read_saturn_game_id(drive_path):
         return None
 
 def find_game_file(title, system):
-    """Search for the .chd game file based on system."""
-    game_filename = f"{title}.chd"
+    """Search for .chd or .cue game file based on system."""
     paths = PSX_GAME_PATHS if system == "PSX" else SATURN_GAME_PATHS
+    
+    # Check for .chd first
+    game_filename = f"{title}.chd"
     for base_path in paths:
         game_file = os.path.join(base_path, game_filename)
         if os.path.exists(game_file):
-            print(f"Found game file: {game_file}")
+            print(f"Found .chd game file: {game_file}")
             if os.access(game_file, os.R_OK):
                 print(f"Game file {game_file} is readable")
             else:
                 print(f"Game file {game_file} is not readable")
             return game_file
-    print(f"Game file not found: {game_filename}")
+    
+    # If .chd not found, check for .cue
+    game_filename = f"{title}.cue"
+    for base_path in paths:
+        game_file = os.path.join(base_path, game_filename)
+        if os.path.exists(game_file):
+            print(f"Found .cue game file: {game_file}")
+            if os.access(game_file, os.R_OK):
+                print(f"Game file {game_file} is readable")
+            else:
+                print(f"Game file {game_file} is not readable")
+            return game_file
+    
+    print(f"No .chd or .cue game file found for: {title}")
     return None
 
 def show_popup(message):
@@ -185,7 +201,6 @@ def launch_game_on_mister(game_id, title, core_path, system, drive_path):
     if not game_file:
         print(f"Game file not found for {title} ({game_id}). Triggering save script...")
         save_cmd = f"{SAVE_SCRIPT} \"{drive_path}\" \"{title}\" {system}"
-        # Wait for save script to complete
         subprocess.run(save_cmd, shell=True, check=True)
         return
     
@@ -205,7 +220,7 @@ def launch_game_on_mister(game_id, title, core_path, system, drive_path):
         print(f"Failed to launch game on MiSTer: {e}")
 
 def main():
-    print("Starting disc launcher on MiSTer...")
+    print("Starting RetroSpin disc launcher on MiSTer...")
     game_titles = load_game_titles()
     
     psx_core = find_core("PSX")
