@@ -6,6 +6,8 @@
 
 This project launches games on MiSTer by reading a game_id directly from a game disc and launching that game if it exists. If the game is not located locally, it will prompt you to install it. Game names are checked against the [redump.org](http://redump.org/) database for saving and for launching.
 
+Because we need to create .cue files, this repo builds the [cdrdao](https://github.com/cdrdao/cdrdao) project specifically to run on the MiSTer. 
+
 ## Status of Features
 
 #### Systems Supported
