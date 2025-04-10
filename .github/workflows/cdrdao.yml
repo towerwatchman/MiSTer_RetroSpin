@@ -37,7 +37,6 @@ jobs:
           sudo mkdir -p /opt
           sudo tar xf gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz -C /opt
           rm gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz
-          # Set PATH directly for this step and verify
           export PATH=/opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/bin:$PATH
           echo "PATH=$PATH" >> $GITHUB_ENV
           ls -la /opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/bin
@@ -66,7 +65,7 @@ jobs:
       - name: Configure and build for ARM (MiSTer)
         run: |
           cd cdrdao-${CDRDAO_VERSION}
-          ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ || { echo "Configure failed"; exit 1; }
+          ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ --without-libao || { echo "Configure failed"; exit 1; }
           make all || { echo "Make failed"; exit 1; }
           if [ ! -f dao/cdrdao ]; then
             echo "Error: cdrdao binary not found at dao/cdrdao"
