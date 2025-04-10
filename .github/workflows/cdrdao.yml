@@ -26,12 +26,15 @@ jobs:
           echo "export PATH=/opt/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
 
       - name: Configure and build for ARM (MiSTer)
+        working-directory: ${{ github.workspace }}
         run: |
+          chmod +x ./autogen.sh
           ./autogen.sh
           ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ --prefix=/usr
           make
 
       - name: Verify build
+        working-directory: ${{ github.workspace }}
         run: |
           file cdrdao
           arm-none-linux-gnueabihf-objdump -d cdrdao | head -n 20
