@@ -83,5 +83,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cdrdao-mister
-          path: cdrdao-${CDRDAO_VERSION}/dao/cdrdao
+          path: dao/cdrdao
+          working-directory: cdrdao-${CDRDAO_VERSION}
           if-no-files-found: error
