@@ -25,7 +25,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential autoconf automake libtool libao-dev wget
+          sudo apt-get install -y \
+            build-essential autoconf automake libtool libao-dev wget \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross \
+            libgconf2-dev gettext
 
       - name: Download and extract ARM toolchain
         run: |
@@ -37,14 +40,81 @@ jobs:
       - name: Configure and build for ARM (MiSTer)
         run: |
           cd cdrdao
-          if [ ! -f autogen.sh ]; then
-            echo "Error: autogen.sh not found in $(pwd)"
-            exit 1
-          fi
           chmod +x ./autogen.sh
           ./autogen.sh
           ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ --prefix=/usr
           make
+
+      - name: Upload config.log if configure fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-log
+          path: cdrdao/config.log
+
+      - name: Verify build
+        run: |
+          cd cdrdao
+          file cdrdao
+          arm-none-linux-gnueabihf-objdump -d cdrdao | head -n 20
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdrdao-mister
+          path: cdrdao/cdrdaoname: Build cdrdao for MiSTer
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cdrdao repository
+        run: |
+          git clone https://github.com/cdrdao/cdrdao.git
+          cd cdrdao
+
+      - name: Debug directory contents
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la
+          cd cdrdao
+          ls -la
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential autoconf automake libtool libao-dev wget \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross \
+            libgconf2-dev gettext
+
+      - name: Download and extract ARM toolchain
+        run: |
+          wget -c https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz
+          sudo mkdir -p /opt
+          sudo tar xf gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz -C /opt
+          echo "export PATH=/opt/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Configure and build for ARM (MiSTer)
+        run: |
+          cd cdrdao
+          chmod +x ./autogen.sh
+          ./autogen.sh
+          ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ --prefix=/usr
+          make
+
+      - name: Upload config.log if configure fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-log
+          path: cdrdao/config.log
 
       - name: Verify build
         run: |
