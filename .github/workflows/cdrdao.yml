@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GCC_VERSION: 10.2-2020.11
-      CDRDAO_VERSION: 1.2.4
+      CDRDAO_VERSION: 1.2.5
     steps:
       - name: Install dependencies
         run: |
@@ -34,7 +34,7 @@ jobs:
 
       - name: Download and extract cdrdao
         run: |
-          wget -q https://github.com/cdrdao/cdrdao/releases/download/rel-${CDRDAO_VERSION}/cdrdao-${CDRDAO_VERSION}.tar.bz2
+          wget -q https://github.com/cdrdao/cdrdao/releases/download/rel_${CDRDAO_VERSION//./_}/cdrdao-${CDRDAO_VERSION}.tar.bz2
           tar xf cdrdao-${CDRDAO_VERSION}.tar.bz2
           rm cdrdao-${CDRDAO_VERSION}.tar.bz2
 
