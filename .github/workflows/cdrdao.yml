@@ -1,0 +1,43 @@
+name: Build cdrdao for MiSTer
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf automake libtool libao-dev wget
+
+      - name: Download and extract ARM toolchain
+        run: |
+          wget -c https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz
+          sudo mkdir -p /opt
+          sudo tar xf gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz -C /opt
+          echo "export PATH=/opt/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Configure and build for ARM (MiSTer)
+        run: |
+          ./autogen.sh
+          ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ --prefix=/usr
+          make
+
+      - name: Verify build
+        run: |
+          file cdrdao
+          arm-none-linux-gnueabihf-objdump -d cdrdao | head -n 20
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdrdao-mister
+          path: cdrdao
