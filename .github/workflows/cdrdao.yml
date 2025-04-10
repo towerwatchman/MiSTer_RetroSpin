@@ -10,8 +10,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout cdrdao repository
+        run: |
+          git clone https://github.com/cdrdao/cdrdao.git
+          cd cdrdao
+
+      - name: Debug directory contents
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la
+          cd cdrdao
+          ls -la
 
       - name: Install dependencies
         run: |
@@ -26,16 +35,20 @@ jobs:
           echo "export PATH=/opt/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
 
       - name: Configure and build for ARM (MiSTer)
-        working-directory: ${{ github.workspace }}
         run: |
+          cd cdrdao
+          if [ ! -f autogen.sh ]; then
+            echo "Error: autogen.sh not found in $(pwd)"
+            exit 1
+          fi
           chmod +x ./autogen.sh
           ./autogen.sh
           ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ --prefix=/usr
           make
 
       - name: Verify build
-        working-directory: ${{ github.workspace }}
         run: |
+          cd cdrdao
           file cdrdao
           arm-none-linux-gnueabihf-objdump -d cdrdao | head -n 20
 
@@ -43,4 +56,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cdrdao-mister
-          path: cdrdao
+          path: cdrdao/cdrdao
