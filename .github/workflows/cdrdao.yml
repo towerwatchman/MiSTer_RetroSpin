@@ -26,6 +26,13 @@ jobs:
           rm gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf.tar.xz
           echo "export PATH=/opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/bin:$PATH" >> $GITHUB_ENV
 
+      - name: Verify toolchain
+        run: |
+          which arm-none-linux-gnueabihf-gcc || { echo "ARM GCC not found"; exit 1; }
+          which arm-none-linux-gnueabihf-g++ || { echo "ARM G++ not found"; exit 1; }
+          which arm-none-linux-gnueabihf-objdump || { echo "ARM objdump not found"; exit 1; }
+          arm-none-linux-gnueabihf-gcc --version
+
       - name: Setup ARM library symlinks
         run: |
           sudo ln -sf /opt/gcc-arm-${GCC_VERSION}-x86_64-arm-none-linux-gnueabihf/arm-none-linux-gnueabihf/libc/lib/ld-linux-armhf.so.3 /lib/ld-linux-armhf.so.3
@@ -41,8 +48,13 @@ jobs:
       - name: Configure and build for ARM (MiSTer)
         run: |
           cd cdrdao-${CDRDAO_VERSION}
-          ./configure --host=arm-none-linux-gnueabihf
-          make all
+          ./configure --host=arm-none-linux-gnueabihf CC=arm-none-linux-gnueabihf-gcc CXX=arm-none-linux-gnueabihf-g++ || { echo "Configure failed"; exit 1; }
+          make all || { echo "Make failed"; exit 1; }
+          if [ ! -f dao/cdrdao ]; then
+            echo "Error: cdrdao binary not found at dao/cdrdao"
+            ls -la dao/
+            exit 1
+          fi
 
       - name: Verify build
         run: |
@@ -55,3 +67,4 @@ jobs:
         with:
           name: cdrdao-mister
           path: cdrdao-${CDRDAO_VERSION}/dao/cdrdao
+          if-no-files-found: error
